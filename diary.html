@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="有些话，写下来更容易。皓和瞳留给彼此的话。"><title>皓 & 瞳 · 把话说开</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='3' width='22' height='26' rx='4' fill='%23834460'/%3E%3Cpath d='M11 3v26M15 11h7M15 16h7' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:light;--ink:#30232c;--sub:#796775;--accent:#833e5c;--line:#e9dfe5;--paper:#fff;--bg:#f8f4f7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:16px;line-height:1.7}button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #ce8fb0;outline-offset:3px}[hidden]{display:none!important}
+.login{min-height:100svh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 50% 20%,#f1dce9,transparent 65%),var(--bg)}.login form{width:100%;max-width:360px}.mark{font-family:Georgia,serif;letter-spacing:3px;color:var(--accent);font-size:32px}.login h1{font-size:26px;font-weight:500;margin:12px 0 36px}.intro{font-size:14px;color:var(--sub);margin:8px 0 0}.login .intro{margin:-24px 0 32px}.login label{display:block;font-size:14px;color:var(--sub);margin-bottom:8px}input[type=password]{width:100%;border:1px solid #d6c3cf;border-radius:12px;padding:13px 16px;background:#fff;color:var(--ink)}.primary{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 24px;min-height:46px}.login .primary{width:100%;margin-top:16px}.message{min-height:24px;font-size:14px;color:var(--accent);margin:12px 0 0}
+.shell{max-width:1100px;margin:auto;padding:32px 28px 70px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:28px;border-bottom:1px solid var(--line)}.top h1{font-size:28px;margin:0;font-weight:500;letter-spacing:1px}.kicker{font-size:13px;color:var(--accent);letter-spacing:2px;margin:0 0 5px}.quiet{border:1px solid var(--line);background:transparent;color:var(--sub);border-radius:10px;padding:8px 14px;min-height:42px}.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:42px;margin-top:34px}.compose{background:var(--paper);padding:24px;border:1px solid var(--line);border-radius:18px;align-self:start;position:sticky;top:24px}.compose h2,.feed-head h2{font-size:20px;font-weight:500;margin:0}.today{font-size:13px;color:var(--sub);margin:6px 0 22px}fieldset{border:0;padding:0;margin:0 0 20px}legend{font-size:13px;color:var(--sub);margin-bottom:10px}.authors{display:flex;gap:10px}.authors label{flex:1;position:relative;cursor:pointer}.authors input{position:absolute;opacity:0}.authors span{display:block;text-align:center;border:1px solid var(--line);border-radius:9px;padding:8px}.authors input:checked+span{border-color:var(--accent);background:#f5e9f0;color:var(--accent)}.authors input:focus-visible+span{outline:3px solid #ce8fb0;outline-offset:2px}.writing-label{display:block;font-size:14px;margin-bottom:10px}textarea{width:100%;min-height:220px;resize:vertical;border:0;border-bottom:1px solid var(--line);padding:4px 0 16px;background:transparent;color:var(--ink);line-height:1.9}textarea::placeholder{color:#a998a4}.count{text-align:right;font-size:12px;color:var(--sub);margin:6px 0 18px}.compose .primary{width:100%}.feed-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}.sync{font-size:13px;color:var(--sub);margin:0 0 22px}.entry{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:24px;margin:0 0 18px}.entry header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.avatar{height:38px;width:38px;display:grid;place-items:center;background:#f0e5ed;color:var(--accent);border-radius:50%;flex-shrink:0}.entry time{color:var(--sub);font-size:12px;display:block}.entry strong{font-size:14px;font-weight:500}.entry .body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.95;margin:0;font-size:16px}.empty{padding:50px 24px;border:1px dashed #d8c8d2;border-radius:16px;text-align:center;color:var(--sub)}.empty p{margin:0 0 8px}.empty small{font-size:13px}.more{display:block;margin:20px auto}.offline{padding:10px 16px;background:#fff1df;color:#795329;border-radius:10px;margin-top:20px;font-size:14px}
+@media(max-width:760px){.shell{padding:22px 18px 48px}.layout{grid-template-columns:1fr;gap:30px;margin-top:24px}.compose{position:static;padding:20px}.top{padding-bottom:22px}.top h1{font-size:24px}textarea{min-height:170px}.entry{padding:20px}}
+</style>
+</head>
+<body>
+<section class="login" id="login"><form id="login-form"><div class="mark">皓 & 瞳</div><h1>把话说开</h1><p class="intro">有些话，写下来更容易。</p><label for="password">输入我们的密码</label><input type="password" id="password" autocomplete="current-password" maxlength="128" required><button class="primary" id="login-button">进来聊聊</button><p class="message" id="login-message" role="status" aria-live="polite"></p></form></section>
+<main class="shell" id="app" hidden>
+ <header class="top"><div><p class="kicker">皓 & 瞳</p><h1>把话说开</h1><p class="intro">有些话，写下来更容易。</p></div><button class="quiet" id="logout">退出</button></header>
+ <p class="offline" id="offline" hidden>网络已断开。输入的文字会保留，联网后再保存。</p>
+ <div class="layout">
+  <form class="compose" id="entry-form"><h2>我想对你说</h2><p class="today" id="today"></p>
+   <fieldset id="authors"><legend>这次是谁想说？</legend><div class="authors"><label><input type="radio" name="author" value="hao" checked><span>皓</span></label><label><input type="radio" name="author" value="tong"><span>瞳</span></label></div></fieldset>
+   <label class="writing-label" for="body">想说的话</label><textarea id="body" maxlength="4000" placeholder="那一刻，我的感受是……&#10;我真正想说的是……&#10;我希望我们可以……" required></textarea><p class="count"><span id="count">0</span> / 4000</p>
+   <button class="primary" id="save">留给你看</button><p class="message" id="save-message" role="status" aria-live="polite"></p>
+  </form>
+  <section aria-label="我们留给彼此的话"><div class="feed-head"><h2>你说，我听</h2><button class="quiet" id="refresh">刷新</button></div><p class="sync" id="sync" role="status" aria-live="polite">正在读取留言…</p><div id="entries"></div><button class="quiet more" id="more" hidden>查看更早的留言</button></section>
+ </div>
+</main>
+<script>
+'use strict';
+// 留言保存在云端。此地址是公开接口地址，不是密码或密钥。
+const API='https://hao-tong-diary.asmr6176.chatgpt.site';
+const $=id=>document.getElementById(id);
+const storage={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},remove(k){try{localStorage.removeItem(k)}catch{}}};
+let token='';try{token=sessionStorage.getItem('diary-token')||''}catch{}
+let next=null,loading=false,saving=false,loadGeneration=0,draftId='',submitted=null;
+let author=storage.get('diary-author')==='tong'?'tong':'hao';
+const names={hao:'皓',tong:'瞳'};
+function rememberToken(value){token=value;try{if(value)sessionStorage.setItem('diary-token',value);else sessionStorage.removeItem('diary-token')}catch{}}
+function currentDraftKey(){return 'diary-draft-'+author;}
+function saveDraft(){storage.set(currentDraftKey(),JSON.stringify({body:$('body').value,id:draftId}));}
+function loadDraft(){let draft={};try{draft=JSON.parse(storage.get(currentDraftKey())||'{}')}catch{}$('body').value=draft.body||'';draftId=draft.id||crypto.randomUUID();submitted=null;$('count').textContent=$('body').value.length;}
+function lock(message=''){rememberToken('');loadGeneration++;$('app').hidden=true;$('login').hidden=false;$('login-message').textContent=message;$('entries').replaceChildren();}
+async function request(path,options={}){
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+ try{const response=await fetch(API+path,{...options,headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{}),...options.headers},signal:controller.signal,cache:'no-store'});
+ let data;try{data=await response.json()}catch{throw new Error('暂时没有连接上，请稍后再试。')}
+ if(!response.ok){if(response.status===401&&path!=='/api/login')lock(data.error);throw new Error(data.error||'请求失败，请重试。')}return data;
+ }catch(error){if(error.name==='AbortError')throw new Error('连接超时，文字已保留，请稍后再试。');if(error instanceof TypeError)throw new Error('暂时无法连接，请检查网络后重试。');throw error;}finally{clearTimeout(timeout)}
+}
+function card(entry){const article=document.createElement('article');article.className='entry';article.dataset.id=entry.id;const header=document.createElement('header');const avatar=document.createElement('span');avatar.className='avatar';avatar.textContent=names[entry.author]||'我们';avatar.setAttribute('aria-hidden','true');const meta=document.createElement('div'),name=document.createElement('strong'),time=document.createElement('time');name.textContent=names[entry.author]||'我们';time.dateTime=entry.created_at;time.textContent=new Date(entry.created_at).toLocaleString('zh-CN',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});meta.append(name,time);header.append(avatar,meta);const body=document.createElement('p');body.className='body';body.textContent=entry.body;article.append(header,body);return article;}
+async function loadEntries(append=false,quiet=false){
+ if(loading||!token)return;loading=true;const generation=loadGeneration;
+ $('refresh').disabled=true;$('more').disabled=true;if(!quiet)$('sync').textContent='正在读取留言…';
+ try{const data=await request('/api/entries'+(append&&next?'?before='+encodeURIComponent(next):''));if(generation!==loadGeneration)return;
+ if(!append)$('entries').replaceChildren();
+ for(const entry of data.entries){if(!Array.from($('entries').children).some(el=>el.dataset.id===entry.id))$('entries').appendChild(card(entry));}
+ if(!$('entries').children.length){const empty=document.createElement('div');empty.className='empty';empty.innerHTML='<p>从一句想说的话开始。</p><small>不急着解释清楚，先写下自己的感受。</small>';$('entries').appendChild(empty);}
+ next=data.next;$('more').hidden=!next;$('sync').textContent='已同步 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
+ }catch(error){if(generation===loadGeneration)$('sync').textContent=error.message;}finally{loading=false;$('refresh').disabled=false;$('more').disabled=false;}
+}
+function enter(){loadGeneration++;$('login').hidden=true;$('app').hidden=false;$('password').value='';loadDraft();loadEntries();}
+$('login-form').addEventListener('submit',async e=>{e.preventDefault();$('login-button').disabled=true;$('login-message').textContent='正在打开…';try{const data=await request('/api/login',{method:'POST',body:JSON.stringify({password:$('password').value})});rememberToken(data.token);enter();}catch(error){$('login-message').textContent=error.message}finally{$('login-button').disabled=false}});
+document.querySelector('input[value="'+author+'"]').checked=true;
+document.querySelectorAll('input[name=author]').forEach(input=>input.addEventListener('change',()=>{saveDraft();author=input.value;storage.set('diary-author',author);loadDraft();$('save-message').textContent=''}));
+$('body').addEventListener('input',()=>{if(submitted){draftId=crypto.randomUUID();submitted=null;}$('count').textContent=$('body').value.length;saveDraft();$('save-message').textContent=''});
+$('entry-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(saving||!$('body').value.trim())return;saving=true;$('save').disabled=true;$('body').readOnly=true;$('authors').disabled=true;$('logout').disabled=true;
+ $('save-message').textContent='正在保存…';saveDraft();submitted={id:draftId,author,body:$('body').value.trim()};
+ try{const data=await request('/api/entries',{method:'POST',body:JSON.stringify(submitted)});storage.remove(currentDraftKey());$('body').value='';$('count').textContent='0';draftId=crypto.randomUUID();submitted=null;
+ $('save-message').textContent='已保存，对方打开就能看到。';$('entries').querySelector('.empty')?.remove();
+ if(!Array.from($('entries').children).some(el=>el.dataset.id===data.entry.id))$('entries').prepend(card(data.entry));$('sync').textContent='刚刚同步';
+ }catch(error){$('save-message').textContent=error.message;}finally{saving=false;$('save').disabled=false;$('body').readOnly=false;$('authors').disabled=false;$('logout').disabled=false;}
+});
+$('logout').addEventListener('click',()=>{saveDraft();lock();});$('refresh').addEventListener('click',()=>loadEntries());$('more').addEventListener('click',()=>loadEntries(true));
+function onlineState(){$('offline').hidden=navigator.onLine;}
+addEventListener('offline',onlineState);addEventListener('online',()=>{onlineState();loadEntries(false,true)});onlineState();
+$('today').textContent=new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+// 20 秒同步一次；查看旧留言或标签页隐藏时不打断阅读。
+setInterval(()=>{if(!document.hidden&&!saving&&scrollY<350)loadEntries(false,true)},20000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadEntries(false,true)});
+if(token)enter();
+if(document.modelContext?.registerTool){
+ try{Promise.resolve(document.modelContext.registerTool({name:'read_shared_diary',title:'读取彼此的留言',description:'在已解锁的页面中读取最近的留言。',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute:async input=>{if(!input||typeof input!=='object'||Object.keys(input).length)throw new Error('不接受额外参数');if(!token)throw new Error('请先输入密码');return request('/api/entries')}})).catch(()=>{});}catch{}
+}
+</script>
+</body></html>
