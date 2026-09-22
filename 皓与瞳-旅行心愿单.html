@@ -31,6 +31,7 @@
 /* Small pre-blurred memory photo with a static readability veil. */
 .card{position:relative;isolation:isolate}.card.has-memory::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(110deg,rgba(255,255,255,.87),rgba(255,255,255,.64)),var(--memory-cover);background-size:cover;background-position:center;pointer-events:none}
 .card.has-memory .card-top{background:rgba(32,62,67,.25)}.card.has-memory .card-bottom{background:rgba(255,255,255,.5)}.card.has-memory .album-button{background:rgba(255,255,255,.82)}.card.has-memory .note,.card.has-memory .card-label,.card.has-memory .card-bottom,.card.has-memory .text-btn{color:#334e51}
+.cover-controls{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px}.cover-controls button,.cover-choice{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:6px;background:#f3f5ef;padding:10px 14px;min-height:44px}.cover-choice{display:block;margin:0 10px 10px;width:calc(100% - 20px);font-size:13px}.cover-choice[aria-pressed="true"]{background:#203e43;color:white;opacity:1}.cover-controls button:disabled{opacity:.45}
 </style>
 
 </head>
@@ -69,6 +70,17 @@ const photoCache=new Map();let cacheBytes=0;
 function clearPhotoCache(){photoCache.clear();cacheBytes=0}
 function cachePhoto(id,blob){if(blob.size>12*1024*1024)return;while(cacheBytes+blob.size>12*1024*1024&&photoCache.size){const key=photoCache.keys().next().value;cacheBytes-=photoCache.get(key).size;photoCache.delete(key)}if(!photoCache.has(id)){photoCache.set(id,blob);cacheBytes+=blob.size}}
 
+// Session-only, bounded caches. Never persist private images on disk.
+const albumLists=new Map(),previewCache=new Map();let previewBytes=0,fullViewURL=null;
+function clearPreviewCache(){previewCache.clear();previewBytes=0}
+function cachePreview(id,blob){if(blob.size>6*1024*1024||previewCache.has(id))return;while((previewBytes+blob.size>6*1024*1024||previewCache.size>=24)&&previewCache.size){const key=previewCache.keys().next().value;previewBytes-=previewCache.get(key).size;previewCache.delete(key)}previewCache.set(id,blob);previewBytes+=blob.size}
+async function albumList(id,signal){const old=albumLists.get(id);if(old&&Date.now()-old.time<30000)return old.data;const data=await api('/api/travel/photos?entryId='+encodeURIComponent(id),{signal});if(!signal?.aborted){if(albumLists.size>=32)albumLists.delete(albumLists.keys().next().value);albumLists.set(id,{data,time:Date.now()})}return data}
+function releaseFullView(){if(fullViewURL){URL.revokeObjectURL(fullViewURL);fullViewURL=null}}
+function updateCoverControls(id){const chosen=entries.find(e=>e.id===id)?.cover_photo_id;const list=albumLists.get(id)?.data.items.filter(p=>p.kind==='memory')||[];const valid=list.some(p=>p.id===chosen),current=valid?chosen:list[0]?.id;
+ for(const button of document.querySelectorAll('#photo-grid .cover-choice')){const selected=button.dataset.photoId===current;button.textContent=selected?(valid?'当前封面':'默认封面'):'设为封面';button.disabled=selected||choosingCover;button.setAttribute('aria-pressed',String(selected))}
+ const info=document.querySelector('#photo-grid .cover-controls span'),reset=document.querySelector('#photo-grid .cover-controls button');if(info)info.textContent=valid?'当前为自选封面':'默认以第一张回忆作为封面';if(reset)reset.disabled=!chosen||choosingCover;
+}
+
 // Render blurred covers once into small bitmaps; scrolling does not run CSS blur.
 let coverObserver=null,coverController=null,coverGeneration=0;
 const coverImages=new Map();
@@ -89,8 +101,8 @@ function syncCovers(){
  stopCovers();if(!token||$('album-dialog').open)return;const generation=coverGeneration;coverController=new AbortController();const signal=coverController.signal;
  const queue=[];let running=false;
  async function drain(){if(running)return;running=true;try{while(queue.length&&generation===coverGeneration){const card=queue.shift();if(!card.isConnected)continue;
- try{const d=await api('/api/travel/photos?entryId='+encodeURIComponent(card.dataset.entryId),{signal});if(generation!==coverGeneration)return;
- const first=d.items.find(p=>p.kind==='memory');if(!first){card.style.removeProperty('--memory-cover');card.classList.remove('has-memory');continue}
+ try{const d=await albumList(card.dataset.entryId,signal);if(generation!==coverGeneration)return;
+ const chosen=entries.find(e=>e.id===card.dataset.entryId)?.cover_photo_id;const first=d.items.find(p=>p.kind==='memory'&&p.id===chosen)||d.items.find(p=>p.kind==='memory');if(!first){card.style.removeProperty('--memory-cover');card.classList.remove('has-memory');continue}
  let image=coverImages.get(first.id);if(!image){const blob=photoCache.get(first.id)||await api('/api/travel/photos/'+first.id,{blob:true,signal});if(generation!==coverGeneration)return;image=await makeCover(blob);if(generation!==coverGeneration)return;if(image){if(coverImages.size>=32)coverImages.delete(coverImages.keys().next().value);coverImages.set(first.id,image)}}
  if(image&&card.isConnected){card.style.setProperty('--memory-cover','url("'+image+'")');card.classList.add('has-memory')}
  }catch(e){/* A cover failure must never prevent reading or editing the wish. */}
@@ -106,7 +118,7 @@ function syncCovers(){
 function node(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e}
 function toast(text){clearTimeout(timer);$('toast').textContent=text;$('toast').hidden=false;timer=setTimeout(()=>$('toast').hidden=true,4500)}
 function warn(text){$('storage-warning').textContent=text;$('storage-warning').hidden=!text}
-function lock(){stopCovers();coverImages.clear();albumController?.abort();albumVersion++;$('photo-viewer').close();$('album-dialog').close();releasePhotoURLs();clearPhotoCache();token='';document.body.classList.add('cloud-locked');$('cloud-password').value='';try{sessionStorage.removeItem('travel-cloud-token');sessionStorage.removeItem('travel-cloud-password-check')}catch{} }
+function lock(){albumLists.clear();clearPreviewCache();releaseFullView();stopCovers();coverImages.clear();albumController?.abort();albumVersion++;$('photo-viewer').close();$('album-dialog').close();releasePhotoURLs();clearPhotoCache();token='';document.body.classList.add('cloud-locked');$('cloud-password').value='';try{sessionStorage.removeItem('travel-cloud-token');sessionStorage.removeItem('travel-cloud-password-check')}catch{} }
 async function api(path,options={}){
  const headers=new Headers(options.headers||{});if(token&&path!=='/api/login')headers.set('Authorization','Bearer '+token);
  let body=options.body;if(body&&!(body instanceof FormData)){headers.set('Content-Type',path==='/api/login'?'text/plain;charset=UTF-8':'application/json');body=JSON.stringify(body)}
@@ -119,7 +131,7 @@ async function api(path,options={}){
  finally{clearTimeout(timeout);options.signal?.removeEventListener('abort',cancel)}
 }
 async function getEntries(){let list=[],after='';do{const d=await api('/api/travel/entries'+(after?'?after='+encodeURIComponent(after):''));list.push(...d.items);after=d.next||''}while(after);return list.sort((a,b)=>b.updated_at.localeCompare(a.updated_at))}
-async function loadPhotoCounts(){const d=await api('/api/travel/photo-counts');photoCounts.clear();for(const p of d.items)photoCounts.set(p.entry_id+':'+p.kind,p.n)}
+async function loadPhotoCounts(){const d=await api('/api/travel/photo-counts');const next=new Map(d.items.map(p=>[p.entry_id+':'+p.kind,p.n]));for(const id of albumLists.keys())if(['memory','inspiration'].some(kind=>(photoCounts.get(id+':'+kind)||0)!==(next.get(id+':'+kind)||0)))albumLists.delete(id);photoCounts.clear();for(const [key,n] of next)photoCounts.set(key,n)}
 async function refresh(quiet=false){if(busy||refreshing)return;refreshing=true;$('cloud-refresh').disabled=true;try{const [list]=await Promise.all([getEntries(),loadPhotoCounts()]);if(!token||busy)return;entries=list;render();$('save-label').textContent='已连接云端 · '+new Date().toLocaleTimeString('zh-CN');if(!quiet)warn('')}catch(e){warn(e.message)}finally{refreshing=false;$('cloud-refresh').disabled=busy}}
 function setBusy(value){busy=value;document.querySelectorAll('[data-write]').forEach(e=>e.disabled=value);$('submit').disabled=value;$('cloud-refresh').disabled=value;$('migrate').disabled=value}
 async function write(v){return (await api('/api/travel/entries',{method:'POST',body:v})).entry}
@@ -135,25 +147,42 @@ $('trash-list').replaceChildren();for(const e of entries.filter(e=>e.deleted)){c
 }
 $('form').addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const name=$('name').value.trim(),note=$('note').value.trim();if(!name){$('name').setCustomValidity('请写下一个目的地');$('name').reportValidity();return}draft();pendingId=pendingId||crypto.randomUUID();const v=editing?{...editSnapshot,name,note,action:'save'}:{id:pendingId,revision:0,name,note,done:false,arrivedAt:null,action:'save'};setBusy(true);try{adopt(await write(v));reset();filter=v.done?'done':'wish';warn('');render();toast('已保存到云端。')}catch(e){warn(e.message)}finally{setBusy(false)}});
 $('name').oninput=()=>{$('name').setCustomValidity('');draft()};$('note').oninput=draft;$('cancel').onclick=()=>{if(!busy)reset()};for(const b of document.querySelectorAll('.board .tab')){b.onclick=()=>{filter=b.dataset.filter;visibleLimit=24;render()};b.onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();filter=e.key==='Home'?'wish':e.key==='End'?'done':filter==='wish'?'done':'wish';render();$(filter==='wish'?'wish-tab':'done-tab').focus()}}}
-function releasePhotoURLs(){photoURLs.forEach(URL.revokeObjectURL);photoURLs=[]}
+function releasePhotoURLs(){releaseFullView();photoURLs.forEach(URL.revokeObjectURL);photoURLs=[]}
 function albumError(text){$('album-status').textContent=text}
+let choosingCover=false;
+async function chooseCover(id,photoId){
+ if(choosingCover)return;const entry=entries.find(e=>e.id===id);if(!entry)return;
+ choosingCover=true;updateCoverControls(id);albumError('正在保存封面…');
+ try{adopt(await write({id,revision:entry.revision,action:'cover',photoId}));render();if(albumEntry===id&&$('album-dialog').open){updateCoverControls(id);albumError(photoId?'已设为封面，选择已保存到云端。':'已恢复默认：使用回忆中的第一张照片。')}}
+ catch(e){albumError(e.message)}finally{choosingCover=false;if(albumEntry===id&&$('album-dialog').open)updateCoverControls(id)}
+}
 async function openAlbum(id,kind){stopCovers();albumEntry=id;albumKind=kind;albumPage=0;$('album-title').textContent=entries.find(e=>e.id===id)?.name||'目的地相册';albumError('');if(!$('album-dialog').open)$('album-dialog').showModal();await renderAlbum()}
 async function renderAlbum(){
  const version=++albumVersion;albumController?.abort();albumController=new AbortController();const signal=albumController.signal;
  releasePhotoURLs();$('photo-grid').replaceChildren(node('p','photo-empty','正在读取相册…'));
  for(const kind of ['inspiration','memory']){const b=$(kind+'-tab');b.classList.toggle('active',kind===albumKind);b.setAttribute('aria-selected',kind===albumKind);b.tabIndex=kind===albumKind?0:-1}
  $('photo-panel').setAttribute('aria-labelledby',albumKind+'-tab');$('album-hint').textContent=albumKind==='inspiration'?'收藏想看的风景、想打卡的地方。':'把抵达的风景和我们的合照留在这里。';
- try{const d=await api('/api/travel/photos?entryId='+encodeURIComponent(albumEntry),{signal});if(version!==albumVersion)return;
+ try{const d=await albumList(albumEntry,signal);if(version!==albumVersion)return;
  const photos=d.items.filter(p=>p.kind===albumKind),pages=Math.max(1,Math.ceil(photos.length/6));albumPage=Math.min(albumPage,pages-1);
  $('photo-grid').replaceChildren();if(!photos.length){$('photo-grid').append(node('p','photo-empty','还没有照片，添加一张属于我们的风景。'));return}
+ const entryId=albumEntry,chosen=entries.find(e=>e.id===entryId)?.cover_photo_id;
+ const chosenValid=photos.some(p=>p.id===chosen);const currentCover=chosenValid?chosen:photos[0]?.id;
+ if(albumKind==='memory'){
+ const controls=node('div','cover-controls'),resetCover=node('button','', '恢复默认第一张');resetCover.type='button';resetCover.disabled=!chosen;
+ resetCover.onclick=()=>chooseCover(entryId,null);controls.append(node('span','',chosenValid?'当前为自选封面':'默认以第一张回忆作为封面'),resetCover);$('photo-grid').append(controls);
+ }
  const jobs=[];
  for(const p of photos.slice(albumPage*6,albumPage*6+6)){
  const figure=node('figure','photo-item'),open=node('button','photo-open'),img=node('img');img.alt=p.name;img.decoding='async';open.type='button';open.disabled=true;open.setAttribute('aria-label','查看 '+p.name);open.append(img);
- const caption=node('figcaption','photo-caption'),remove=node('button','text-btn','删除');caption.append(node('span','',p.name),remove);figure.append(open,caption);$('photo-grid').append(figure);
- remove.onclick=async()=>{if(!confirm('从云端相册移除「'+p.name+'」？'))return;remove.disabled=true;try{await api('/api/travel/photos/'+p.id+'/delete',{method:'POST',body:{}});if(photoCache.has(p.id)){cacheBytes-=photoCache.get(p.id).size;photoCache.delete(p.id)}await loadPhotoCounts();render();if(version===albumVersion){await renderAlbum();albumError('照片已移除。')}}catch(e){remove.disabled=false;albumError(e.message)}};
- jobs.push(async()=>{try{let blob=photoCache.get(p.id);if(!blob){blob=await api('/api/travel/photos/'+p.id,{blob:true,signal});if(version!==albumVersion)return;cachePhoto(p.id,blob)}if(version!==albumVersion)return;
- const preview=await smallPhoto(blob,640,.78);if(version!==albumVersion)return;
- const u=URL.createObjectURL(preview);photoURLs.push(u);img.src=u;open.disabled=false;open.onclick=async()=>{open.disabled=true;try{const original=photoCache.get(p.id)||await api('/api/travel/photos/'+p.id,{blob:true,signal});if(version!==albumVersion)return;const full=URL.createObjectURL(original);photoURLs.push(full);$('viewer-title').textContent=p.name;$('viewer-image').src=full;$('viewer-image').alt=p.name;$('photo-viewer').showModal()}catch(e){if(e.name!=='AbortError')albumError(e.message)}finally{open.disabled=false}};
+ const caption=node('figcaption','photo-caption'),remove=node('button','text-btn','删除');caption.append(node('span','',p.name),remove);figure.append(open,caption);
+ if(albumKind==='memory'){const coverButton=node('button','cover-choice',p.id===currentCover?(chosenValid?'当前封面':'默认封面'):'设为封面');coverButton.type='button';coverButton.dataset.photoId=p.id;coverButton.disabled=p.id===currentCover;coverButton.setAttribute('aria-pressed',String(p.id===currentCover));coverButton.onclick=()=>chooseCover(entryId,p.id);figure.append(coverButton)}
+ $('photo-grid').append(figure);
+ remove.onclick=async()=>{if(!confirm('从云端相册移除「'+p.name+'」？'))return;remove.disabled=true;try{await api('/api/travel/photos/'+p.id+'/delete',{method:'POST',body:{}});if(photoCache.has(p.id)){cacheBytes-=photoCache.get(p.id).size;photoCache.delete(p.id)}albumLists.delete(entryId);await loadPhotoCounts();render();if(version===albumVersion){await renderAlbum();albumError('照片已移除。')}}catch(e){remove.disabled=false;albumError(e.message)}};
+ jobs.push(async()=>{try{let preview=previewCache.get(p.id);if(!preview){let blob=photoCache.get(p.id);if(!blob){blob=await api('/api/travel/photos/'+p.id,{blob:true,signal});if(version!==albumVersion)return;cachePhoto(p.id,blob)}if(version!==albumVersion)return;
+ // Let input and scrolling run before decoding the next image.
+ await new Promise(resolve=>setTimeout(resolve,0));if(version!==albumVersion)return;
+ preview=await smallPhoto(blob,640,.78);if(version!==albumVersion)return;cachePreview(p.id,preview)}
+ const u=URL.createObjectURL(preview);photoURLs.push(u);img.src=u;open.disabled=false;open.onclick=async()=>{open.disabled=true;try{const original=photoCache.get(p.id)||await api('/api/travel/photos/'+p.id,{blob:true,signal});if(version!==albumVersion)return;releaseFullView();const full=URL.createObjectURL(original);fullViewURL=full;$('viewer-title').textContent=p.name;$('viewer-image').src=full;$('viewer-image').alt=p.name;$('photo-viewer').showModal()}catch(e){if(e.name!=='AbortError')albumError(e.message)}finally{open.disabled=false}};
  }catch(e){if(version===albumVersion&&e.name!=='AbortError')figure.append(node('p','photo-empty',e.message))}});
  }
  const pager=node('div','album-pager'),prev=node('button','','上一页'),next=node('button','','下一页');prev.type=next.type='button';prev.disabled=albumPage===0;next.disabled=albumPage===pages-1;
@@ -172,9 +201,9 @@ async function smallPhoto(blob,maxSide=1600,quality=.82){
  }catch{return blob}finally{bitmap?.close()}
 }
 
-async function upload(photo){const form=new FormData();form.set('entryId',photo.entryId);form.set('kind',photo.kind);form.set('file',photo.blob,photo.name);return api('/api/travel/photos/'+photo.id,{method:'POST',body:form})}
+async function upload(photo){const form=new FormData();form.set('entryId',photo.entryId);form.set('kind',photo.kind);form.set('file',photo.blob,photo.name);const result=await api('/api/travel/photos/'+photo.id,{method:'POST',body:form});albumLists.delete(photo.entryId);cachePhoto(photo.id,photo.blob);return result}
 $('photo-input').onchange=async event=>{const files=Array.from(event.target.files||[]);event.target.value='';if(!files.length||uploadBusy)return;uploadBusy=true;event.target.disabled=true;let saved=0;const errors=[],entryId=albumEntry,kind=albumKind;try{for(const [i,file] of files.entries()){albumError('正在上传 '+(i+1)+' / '+files.length+' 张…');try{if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)||file.size>20*1024*1024)throw Error('支持 JPG/PNG/WebP/GIF，每张最多20MB');await upload({id:crypto.randomUUID(),entryId,kind,name:file.name,blob:await smallPhoto(file)});saved++}catch(e){errors.push(file.name+'：'+e.message)}}await loadPhotoCounts();render();await renderAlbum();albumError('已上传 '+saved+' 张。'+errors.join('\n'))}catch(e){albumError(e.message)}finally{uploadBusy=false;event.target.disabled=false}};
-$('album-close').onclick=()=>{if(uploadBusy){albumError('正在上传，请稍候。');return}$('album-dialog').close()};$('album-dialog').addEventListener('cancel',e=>{if(uploadBusy)e.preventDefault()});$('album-dialog').addEventListener('close',()=>{albumController?.abort();albumVersion++;releasePhotoURLs();syncCovers()});$('viewer-close').onclick=()=>$('photo-viewer').close();$('photo-viewer').addEventListener('close',()=>$('viewer-image').removeAttribute('src'));for(const kind of ['inspiration','memory']){$(kind+'-tab').onclick=()=>{albumKind=kind;albumPage=0;albumError('');renderAlbum()};$(kind+'-tab').onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();albumKind=e.key==='Home'?'inspiration':e.key==='End'?'memory':albumKind==='inspiration'?'memory':'inspiration';albumPage=0;renderAlbum();$(albumKind+'-tab').focus()}}}
+$('album-close').onclick=()=>{if(uploadBusy){albumError('正在上传，请稍候。');return}$('album-dialog').close()};$('album-dialog').addEventListener('cancel',e=>{if(uploadBusy)e.preventDefault()});$('album-dialog').addEventListener('close',()=>{albumController?.abort();albumVersion++;releasePhotoURLs();syncCovers()});$('viewer-close').onclick=()=>$('photo-viewer').close();$('photo-viewer').addEventListener('close',()=>{$('viewer-image').removeAttribute('src');releaseFullView()});for(const kind of ['inspiration','memory']){$(kind+'-tab').onclick=()=>{albumKind=kind;albumPage=0;albumError('');renderAlbum()};$(kind+'-tab').onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();albumKind=e.key==='Home'?'inspiration':e.key==='End'?'memory':albumKind==='inspiration'?'memory':'inspiration';albumPage=0;renderAlbum();$(albumKind+'-tab').focus()}}}
 function legacyEntries(){const raw=localStorage.getItem(KEY);if(!raw)return [];const rows=JSON.parse(raw);if(!Array.isArray(rows))throw Error('旧清单格式无效，原记录未改动。');return rows}
 function legacyDB(){return new Promise((resolve,reject)=>{if(!window.indexedDB){resolve(null);return}const req=indexedDB.open('hao-tong-travel-photos-v1',1);let absent=false;req.onupgradeneeded=()=>{absent=true;req.transaction.abort()};req.onerror=()=>absent?resolve(null):reject(Error('无法读取旧相册'));req.onblocked=()=>reject(Error('请关闭旧相册标签页后重试'));req.onsuccess=()=>resolve(req.result)})}
 function oldRead(db,fn){return new Promise((resolve,reject)=>{const req=fn(db.transaction('photos','readonly').objectStore('photos'));req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
@@ -182,7 +211,7 @@ async function checkLegacy(){try{const count=legacyEntries().length;$('migration
 $('migrate').onclick=async()=>{if(busy||uploadBusy)return;setBusy(true);let db,added=0,existing=0,photos=0,photoExisting=0;const errors=[];try{const rows=legacyEntries();db=await legacyDB();const allowed=new Set();for(const [i,e] of rows.entries()){$('migration-status').textContent='正在导入心愿 '+(i+1)+' / '+rows.length;try{const d=await api('/api/travel/entries',{method:'POST',body:{...e,action:'import',revision:0,arrivedAt:e.arrivedAt||null}});if(d.existed)existing++;else added++;if(!d.entry.deleted)allowed.add(e.id)}catch(err){errors.push((e.name||'旧心愿')+'：'+err.message)}}if(db){const keys=await oldRead(db,s=>s.getAllKeys());for(const [i,id] of keys.entries()){$('migration-status').textContent='正在检查相册 '+(i+1)+' / '+keys.length;try{const p=await oldRead(db,s=>s.get(id));if(!allowed.has(p.entryId)){errors.push(p.name+'：对应心愿未导入或已在回收站，照片留在本机。');continue}const d=await upload(p);if(d.existed)photoExisting++;else photos++}catch(err){errors.push('照片 '+id+'：'+err.message)}}}
 $('migration-status').textContent=`本次新增 ${added} 条心愿、${photos} 张照片；已存在 ${existing} 条心愿、${photoExisting} 张照片。`+(errors.length?'以下项目未完成，可重新导入重试：\n'+errors.join('\n'):'导入已完成，本机原记录保持不变。');
 }catch(e){$('migration-status').textContent='导入未完成：'+e.message}finally{db?.close();setBusy(false);await refresh();checkLegacy()}};
-$('cloud-refresh').onclick=()=>refresh();$('cloud-logout').onclick=()=>{if(busy||uploadBusy){toast('保存过程中暂不能退出。');return}lock()};
+$('cloud-refresh').onclick=()=>{albumLists.clear();refresh()};$('cloud-logout').onclick=()=>{if(busy||uploadBusy){toast('保存过程中暂不能退出。');return}lock()};
 $('cloud-export').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),entries},null,2)],{type:'application/json'})),a=node('a');a.href=u;a.download='旅行心愿-文字备份.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
 async function passwordCheck(password){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('travel-session:'+password));return Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('')}
 async function connectTravel(password,onProgress){
