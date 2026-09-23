@@ -32,13 +32,15 @@
 .card{position:relative;isolation:isolate}.card.has-memory::before{content:"";position:absolute;inset:0;z-index:-1;background-image:linear-gradient(110deg,rgba(255,255,255,.87),rgba(255,255,255,.64)),var(--memory-cover);background-size:cover;background-position:center;pointer-events:none}
 .card.has-memory .card-top{background:rgba(32,62,67,.25)}.card.has-memory .card-bottom{background:rgba(255,255,255,.5)}.card.has-memory .album-button{background:rgba(255,255,255,.82)}.card.has-memory .note,.card.has-memory .card-label,.card.has-memory .card-bottom,.card.has-memory .text-btn{color:#334e51}
 .cover-controls{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px}.cover-controls button,.cover-choice{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:6px;background:#f3f5ef;padding:10px 14px;min-height:44px}.cover-choice{display:block;margin:0 10px 10px;width:calc(100% - 20px);font-size:13px}.cover-choice[aria-pressed="true"]{background:#203e43;color:white;opacity:1}.cover-controls button:disabled{opacity:.45}
+
+.travel-nav{display:flex;align-items:center;justify-content:flex-end;gap:12px 20px;flex-wrap:wrap}.home-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;color:var(--ink);background:#fff;text-decoration:none;font-size:14px;letter-spacing:0;white-space:nowrap}.home-link:hover{background:#e6eae2;border-color:var(--ink)}.home-link:focus-visible{outline:2px solid var(--orange);outline-offset:4px}@media(max-width:600px){header{flex-wrap:wrap;gap:14px}.travel-nav{width:100%;justify-content:space-between;gap:8px}.travel-nav .series{font-size:11px;letter-spacing:1px}}
 </style>
 
 </head>
 
 <body class="cloud-locked"><section id="cloud-gate"><div class="cloud-gate-card"><h1>旅行心愿</h1><p>皓 & 瞳 · 把每一次想出发，留在云端</p><form id="cloud-login"><label for="cloud-password">输入我们的密码</label><input id="cloud-password" type="password" inputmode="numeric" autocomplete="current-password" required maxlength="128"><button class="primary" id="cloud-enter">打开云端心愿单</button><p id="cloud-login-message" role="status"></p></form><a href="https://haoshenwen.github.io/chobo-try/">返回首页</a></div></section>
 
-<header><div class="brand"><span class="monogram">&</span><span>皓 & 瞳</span></div><span class="series">我们的生活系列 / 旅行篇</span></header>
+<header><div class="brand"><span class="monogram">&</span><span>皓 & 瞳</span></div><nav class="travel-nav" aria-label="页面导航"><span class="series">我们的生活系列 / 旅行篇</span><a class="home-link" href="https://haoshenwen.github.io/chobo-try/">← 返回心形目录</a></nav></header>
 
 <main>
 
@@ -237,4 +239,5 @@ setInterval(()=>{if(token&&!document.hidden&&!busy&&!uploadBusy&&!editing&&!$('n
 </body>
 
 </html>
+
 
